@@ -3,7 +3,8 @@ import java.net.*;
 import java.util.ArrayList;
 
 public class TCPServer {
-  private ArrayList<TCPClient> clients;
+  private ArrayList<Publisher> publishers = new ArrayList<Publisher>();
+  private ArrayList<Subscriber> subscribers = new ArrayList<Subscriber>();
 
   public static void main(String[] args) throws Exception {
     TCPServer server = new TCPServer();
