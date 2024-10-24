@@ -15,6 +15,21 @@ public class TCPClient {
       System.out.println("Unknown Host");
     }
   }
+
+  public void sendMessage(String message) {
+    out.println(message);
+  }
+
+  public String readMessage() {
+    String output = null;
+    try {
+      output = in.readLine();
+    } catch (IOException e) {
+      System.out.println("IOException reading message");
+    }
+    return output;
+  }
+
   public void connect() {
     try {
       clientSocket = new Socket(serverAddress, port);
@@ -33,20 +48,6 @@ public class TCPClient {
     } catch (IOException e) {
       System.out.println("IOException closing clientSocket");
     }
-  }
-
-  public String readMessage() {
-    String output = null;
-    try {
-      output = in.readLine();
-    } catch (IOException e) {
-      System.out.println("IOException reading message");
-    }
-    return output;
-  }
-
-  public void sendMessage(String message) {
-    out.println(message);
   }
 
 }

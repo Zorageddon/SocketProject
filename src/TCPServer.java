@@ -1,4 +1,3 @@
-import javax.print.attribute.standard.Media;
 import java.io.*;
 import java.net.*;
 import java.util.*;
@@ -6,11 +5,13 @@ import java.util.*;
 public class TCPServer {
   private static final int port = 6789;
   private static final String[] topics = {"WEATHER", "NEWS"};
-  private static Map<String, List<Mediator>> clientList = new HashMap<>();
+  private static Map<String, List<String>> msgQ = new HashMap<>();
+  private static Map<String, Set<Mediator>> clientsByTopic = new HashMap<>();
 
-  public static void main(String[] args) throws Exception {
+
+  public static void main(String[] args) {
     for (String topic : topics) {
-      clientList.put(topic, new ArrayList<>());
+      clientsByTopic.put(topic, new HashSet<>());
     }
     try (ServerSocket welcomeSocket = new ServerSocket(port)) {
       while (true) {
@@ -20,6 +21,10 @@ public class TCPServer {
       System.out.println("IOException creating welcomeSocket");
     }
   }
+
+
+//--------------------------------------------------------------------------------------------------------------------\\
+
 
   private static class Mediator extends Thread {
     private Socket clientSocket;
@@ -47,14 +52,14 @@ public class TCPServer {
 
           switch (request) {
             case "CONN>":
-              name = parts[0].trim();
+              name = parts[0].trim().substring(1);
               out.println("<CONN_ACK>");
               break;
             case "SUB":
-              handleSub(parts[2].trim().substring(0, (parts[2].trim().length() - 1)));
+              sub(parts[2].trim().substring(0, (parts[2].trim().length() - 1)));
               break;
             case "PUB":
-              handlePub(parts[2].trim(), parts[3].trim().substring(0, (parts[3].trim().length() - 1)));
+              pub(parts[2].trim(), parts[3].trim().substring(0, (parts[3].trim().length() - 1)));
               break;
             case "DISC>":
               out.println("<DISC_ACK>");
@@ -68,11 +73,11 @@ public class TCPServer {
       }
     }
 
-    private void handlePub(String topic, String message) {
+    private void pub(String topic, String message) {
       if (subbed.contains(topic)) {
-        synchronized (clientList) {
-          for (Mediator client : clientList.get(topic)) {
-            client.out.println("Message from " + name + " on " + topic + ": " + message);
+        synchronized (clientsByTopic) {
+          for (Mediator c : clientsByTopic.get(topic)) {
+            c.out.println("Message from " + name + " on " + topic + ": " + message);
           }
         }
       } else {
@@ -80,11 +85,11 @@ public class TCPServer {
       }
     }
 
-    private void handleSub(String topic) {
+    private void sub(String topic) {
       if(Arrays.asList(topics).contains(topic)) {
         subbed.add(topic);
-        synchronized (clientList) {
-          clientList.get(topic).add(this);
+        synchronized (clientsByTopic) {
+          clientsByTopic.get(topic).add(this);
         }
         out.println("<SUB_ACK>");
       }  else {
