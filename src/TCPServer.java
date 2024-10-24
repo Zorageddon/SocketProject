@@ -51,16 +51,16 @@ public class TCPServer {
               out.println("<CONN_ACK>");
               break;
             case "SUB":
-              handleSub(parts[2].trim());
+              handleSub(parts[2].trim().substring(0, (parts[2].trim().length() - 1)));
               break;
             case "PUB":
-              handlePub(parts[2].trim(), parts[3].trim());
+              handlePub(parts[2].trim(), parts[3].trim().substring(0, (parts[3].trim().length() - 1)));
               break;
             case "DISC>":
               out.println("<DISC_ACK>");
               break;
             default:
-              System.out.println("<ERROR: Invalid Request");
+              out.println("<ERROR: Invalid Request>");
           }
         }
       } catch (IOException e) {

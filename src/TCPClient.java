@@ -26,10 +26,10 @@ public class TCPClient {
 
   }
 
-  public void disconnect(Socket socket) {
+  public void disconnect() {
     out.println("<DISC>");
     try {
-      socket.close();
+      clientSocket.close();
     } catch (IOException e) {
       System.out.println("IOException closing clientSocket");
     }
