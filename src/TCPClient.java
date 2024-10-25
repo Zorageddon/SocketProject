@@ -20,7 +20,7 @@ public class TCPClient {
     out.println(message);
   }
 
-  public String readMessage() {
+  public String readMsg() {
     String output = null;
     try {
       output = in.readLine();
@@ -42,8 +42,12 @@ public class TCPClient {
   }
 
   public void disconnect() {
-    out.println("<DISC>");
+    sendMessage("<DISC>");
     try {
+      String response = readMsg();
+//      if (response.startsWith("<D")) {
+        System.out.println(response); //OUTPUTTING "It'S SUNNY" FOR SOME REASON?
+//      }
       clientSocket.close();
     } catch (IOException e) {
       System.out.println("IOException closing clientSocket");

@@ -6,22 +6,22 @@ public class Publisher extends TCPClient {
     this.name = name;
     this.topic = topic;
   }
-
+//THIS BLOCKS WHEN NO ERROR RESPONSE IS PUSHED
   public void publish(String topic, String message) {
-    sendMessage("<" + name + ", PUB, " + topic + ", " + message + ">");
-    String response = readMessage();
-    if (response.startsWith("<E")) {
-      System.out.println(response);
-    }
+    sendMessage("<PUB, " + topic + ", " + message + ">");
+//    String response = readMsg();  //BLOCKS WHICH IS ANNOYING
+//    if (response.startsWith("<E")) {
+//      System.out.println(response);
+//    }
   }
 
   @Override
   public void connect() {
     super.connect();
     sendMessage("<" + name + ", CONN>");
-    System.out.println(readMessage()); //Should be <CONN_ACK>
+    System.out.println(readMsg()); //Should be <CONN_ACK>
     sendMessage("<" + name + ", SUB, " + topic + ">");
-    System.out.println(readMessage()); //should be <SUB_ACK>
+    System.out.println(readMsg()); //should be <SUB_ACK>
   }
 
 }
