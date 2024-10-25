@@ -22,28 +22,22 @@ public class Subscriber extends TCPClient {
   public void reconnect() {
     super.connect();
     sendMessage("<RECONNECT, " + name + ">");
-    getMsgs();
+    String response;
+    if ((response = readMsg()).startsWith("<R")) {
+      System.out.println(response);
+      getMsgs();
+    }
   }
 
   public void getMsgs() {
-//    try {
-//      while (in.ready()) {
-//        String msg = readMsg();
-//        System.out.println("For: " + name + "\n" + msg);
-//      }
-//    } catch (IOException e) {
-//      System.out.println("IOException getting messages " + name);
-//    }
-
-    String msg;
-    msg = readMsg();
-    System.out.println("For: " + name + "\n" + msg);
-  }
-
-  @Override
-  public void disconnect() {
-    super.disconnect();
-    System.out.println(name);
+    try {
+      while (in.ready()) {
+        String msg = readMsg();
+        System.out.println("For: " + name + "\n" + msg);
+      }
+    } catch (IOException e) {
+      System.out.println("IOException getting messages " + name);
+    }
   }
 
 }

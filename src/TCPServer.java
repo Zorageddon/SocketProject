@@ -9,7 +9,6 @@ public class TCPServer {
   private static final Map<String, List<String>> msgQ = new ConcurrentHashMap<>();
   //merge two client lists into one <Name, Set of Topics>?
   private static final Map<String, Map<String, Mediator>> clientsByTopic = new ConcurrentHashMap<>();
-  private static final Map<String, Mediator> activeClients = new ConcurrentHashMap<>();
 
 
   public static void main(String[] args) {
@@ -88,7 +87,6 @@ public class TCPServer {
     private void connect(String name) {
       isActive = true;
       clientName = name;
-      activeClients.putIfAbsent(clientName, this);
       out.println("<CONN_ACK>");
     }
 
@@ -96,8 +94,8 @@ public class TCPServer {
       isPublisher = true;  //Don't love this fix for below problem as publishers will get pushed messages if they don't try to publish right away
       if (clientsByTopic.containsKey(topic) && clientsByTopic.get(topic).containsKey(clientName)) {
         clientsByTopic.get(topic).forEach((k, v) -> {
-          if (v.isActive && !v.isPublisher) {
-            v.out.println(message); //YOU PRINT TO PUBLISHERS TOO
+          if (v.isActive && !v.isPublisher) { //YOU PRINT TO PUBLISHERS TOO
+            v.out.println(message);
           } else {
             msgQ.putIfAbsent(k, new ArrayList<>());
             msgQ.get(k).add(message);

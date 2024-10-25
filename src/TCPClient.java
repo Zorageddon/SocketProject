@@ -8,6 +8,7 @@ public class TCPClient {
   protected PrintWriter out;
   protected BufferedReader in;
 
+
   public TCPClient() {
     try {
       this.serverAddress = InetAddress.getLocalHost();

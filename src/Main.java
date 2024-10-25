@@ -1,26 +1,30 @@
 public class Main { //for some reason when run, sub1 only prints one of the Qd msgs, and then doesn't DISC_ACK but does disconnect
                     //I think it's because I'm only reading in one line when reconnecting, and that screws with things somehow
+                    //Now for some reason it only works on the second run of main???
   public static void main(String[] args) {
     Publisher pub = new Publisher("pub1", "WEATHER");
-    pub.connect();               // Connect publisher
+    pub.connect();
 
-    Subscriber sub = new Subscriber("sub1");
-    sub.connect();               // Connect subscriber
-    sub.subscribe("WEATHER");    // Subscribe to topic
-    sub.disconnect();
-    pub.publish("WEATHER", "It's sunny!"); // Publish message
-    pub.publish("WEATHER", "It's rainy!"); // Publish message
-    sub.reconnect();
-    sub.getMsgs();               // Start listening for messages
+    Subscriber sub1 = new Subscriber("sub1");
+    sub1.connect();
+    sub1.subscribe("WEATHER");
+    sub1.disconnect();
+    Subscriber sub2 = new Subscriber("sub2");
+    sub2.connect();
+    sub2.subscribe("WEATHER");
+    sub2.getMsgs();
+    pub.publish("WEATHER", "It's sunny!");
+    pub.publish("WEATHER", "It's rainy!");
+    sub2.disconnect();
+    sub1.reconnect();
 
-    // Wait a moment to ensure the message is received
     try {
-      Thread.sleep(1000); // Adjust as necessary
+      Thread.sleep(1000);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
 
-    sub.disconnect();           // Disconnect subscriber
-    pub.disconnect();           // Disconnect publisher
+    sub1.disconnect();
+    pub.disconnect();
   }
 }
