@@ -24,4 +24,10 @@ public class Publisher extends TCPClient {
     System.out.println(readMsg()); //should be <SUB_ACK>
   }
 
+  @Override
+  public void disconnect() {
+    super.disconnect();
+    System.out.println(name);
+  }
+
 }

@@ -22,19 +22,28 @@ public class Subscriber extends TCPClient {
   public void reconnect() {
     super.connect();
     sendMessage("<RECONNECT, " + name + ">");
-    System.out.println(readMsg()); //Should be <RECONNECT_ACK>
+    getMsgs();
   }
 
-  public void getMsg() { //IS READ HERE BLOCKING?
+  public void getMsgs() {
+//    try {
+//      while (in.ready()) {
+//        String msg = readMsg();
+//        System.out.println("For: " + name + "\n" + msg);
+//      }
+//    } catch (IOException e) {
+//      System.out.println("IOException getting messages " + name);
+//    }
+
     String msg;
     msg = readMsg();
-    System.out.println(msg);
-//    new Thread(() -> {
-//      String msg;
-//      while ((msg = readMsg()) != null) {
-//        System.out.println(msg);
-//      }
-//    }).start();
+    System.out.println("For: " + name + "\n" + msg);
+  }
+
+  @Override
+  public void disconnect() {
+    super.disconnect();
+    System.out.println(name);
   }
 
 }

@@ -43,15 +43,14 @@ public class TCPClient {
 
   public void disconnect() {
     sendMessage("<DISC>");
-    try {
-      String response = readMsg();
-//      if (response.startsWith("<D")) {
-        System.out.println(response); //OUTPUTTING "It'S SUNNY" FOR SOME REASON?
-//      }
-      clientSocket.close();
-    } catch (IOException e) {
-      System.out.println("IOException closing clientSocket");
+    String response = readMsg();
+    if (response.startsWith("<D")) {
+      try {
+        System.out.println(response);
+        clientSocket.close();
+      } catch (IOException e) {
+        System.out.println("IOException closing clientSocket");
+      }
     }
   }
-
 }

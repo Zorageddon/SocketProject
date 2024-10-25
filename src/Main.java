@@ -1,4 +1,5 @@
-public class Main {
+public class Main { //for some reason when run, sub1 only prints one of the Qd msgs, and then doesn't DISC_ACK but does disconnect
+                    //I think it's because I'm only reading in one line when reconnecting, and that screws with things somehow
   public static void main(String[] args) {
     Publisher pub = new Publisher("pub1", "WEATHER");
     pub.connect();               // Connect publisher
@@ -6,10 +7,11 @@ public class Main {
     Subscriber sub = new Subscriber("sub1");
     sub.connect();               // Connect subscriber
     sub.subscribe("WEATHER");    // Subscribe to topic
-
+    sub.disconnect();
     pub.publish("WEATHER", "It's sunny!"); // Publish message
-
-    sub.getMsg();               // Start listening for messages
+    pub.publish("WEATHER", "It's rainy!"); // Publish message
+    sub.reconnect();
+    sub.getMsgs();               // Start listening for messages
 
     // Wait a moment to ensure the message is received
     try {

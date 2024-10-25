@@ -1,15 +1,15 @@
 import java.io.*;
 import java.net.*;
+import java.security.KeyPair;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class TCPServer {
   private static final int port = 6789;
-  private static final String[] topics = {"WEATHER", "NEWS"};
-  private static Map<String, List<String>> msgQ = new ConcurrentHashMap<>();
+  private static final Map<String, List<String>> msgQ = new ConcurrentHashMap<>();
   //merge two client lists into one <Name, Set of Topics>?
-  private static Map<String, Map<String, Mediator>> clientsByTopic = new ConcurrentHashMap<>();
-  private static Map<String, Mediator> activeClients = new ConcurrentHashMap<>();
+  private static final Map<String, Map<String, Mediator>> clientsByTopic = new ConcurrentHashMap<>();
+  private static final Map<String, Mediator> activeClients = new ConcurrentHashMap<>();
 
 
   public static void main(String[] args) {
@@ -29,28 +29,30 @@ public class TCPServer {
 
 
   private static class Mediator extends Thread {
-    private Socket clientSocket;
+    private final Socket clientSocket;
     private PrintWriter out;
-    private BufferedReader in;
     private String clientName;
     private boolean isActive;
+    private boolean isPublisher;
 
 
     public Mediator(Socket clientSocket) {
       this.clientSocket = clientSocket;
+      this.isPublisher = false;
     }
 
     @Override
     public void run() {
       try {
         out = new PrintWriter(clientSocket.getOutputStream(), true);
-        in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+        BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 
         String message;
 
         while ((message = in.readLine()) != null) {
           String[] parts = message.split(",", 4);
           String one = parts[0].trim().substring(1);
+          //messages where format places request in position 0
           if (one.equals("PUB") || one.equals("DISC>") || one.equals("RECONNECT")) {
             switch (one) {
               case "PUB":
@@ -65,9 +67,10 @@ public class TCPServer {
                 break;
             }
           } else {
+            //messages where format places request in position 1
             switch (parts[1].trim()) {
               case "CONN>":
-                connect(parts[0].trim());
+                connect(parts[0].trim().substring(1));
                 break;
               case "SUB":
                 sub(parts[2].trim().substring(0, (parts[2].trim().length() - 1)));
@@ -83,17 +86,18 @@ public class TCPServer {
     }
 
     private void connect(String name) {
-      this.isActive = true;
-      this.clientName = name;
-      activeClients.putIfAbsent(this.clientName, this);
+      isActive = true;
+      clientName = name;
+      activeClients.putIfAbsent(clientName, this);
       out.println("<CONN_ACK>");
     }
 
     private void pub(String topic, String message) {
-      if (clientsByTopic.containsKey(topic) && clientsByTopic.get(topic).containsKey(this.clientName)) {
+      isPublisher = true;  //Don't love this fix for below problem as publishers will get pushed messages if they don't try to publish right away
+      if (clientsByTopic.containsKey(topic) && clientsByTopic.get(topic).containsKey(clientName)) {
         clientsByTopic.get(topic).forEach((k, v) -> {
-          if (v.isAlive()) {
-            v.out.println(message);
+          if (v.isActive && !v.isPublisher) {
+            v.out.println(message); //YOU PRINT TO PUBLISHERS TOO
           } else {
             msgQ.putIfAbsent(k, new ArrayList<>());
             msgQ.get(k).add(message);
@@ -106,7 +110,7 @@ public class TCPServer {
 
     private void sub(String topic) {
       if (clientsByTopic.containsKey(topic)) {
-        clientsByTopic.get(topic).putIfAbsent(this.clientName, this);
+        clientsByTopic.get(topic).putIfAbsent(clientName, this);
         out.println("<SUB_ACK>");
       } else {
         out.println("<ERROR: Subscription Failed - Subject Not Found>");
@@ -115,21 +119,13 @@ public class TCPServer {
 
     private void reconnect(String name) {
       this.clientName = name;
-      if (activeClients.containsKey(this.clientName) && activeClients.get(this.clientName).isActive) {
-        System.out.println("Client already connected");
-      } else if (!activeClients.containsKey(this.clientName)) {
-        connect(this.clientName);
-      } else {
-        activeClients.replace(this.clientName, this);
-        if (clientsByTopic.get("WEATHER").containsKey(this.clientName)) {
-          clientsByTopic.get("WEATHER").replace(this.clientName, this);
+      clientsByTopic.forEach((topic, nameMap) -> {
+        if (nameMap.containsKey(clientName) && !nameMap.get(clientName).isActive) {
+          nameMap.replace(clientName, this);
+          out.println("<RECONNECT_ACK>");
         }
-        if (clientsByTopic.get("NEWS").containsKey(this.clientName)) {
-          clientsByTopic.get("NEWS").replace(this.clientName, this);
-        }
-        out.println("<RECONNECT_ACK>");
-      }
-      if (msgQ.containsKey(this.clientName) && !msgQ.get(this.clientName).isEmpty()) {
+      });
+      if (msgQ.containsKey(this.clientName)) {
         for (String msg : msgQ.get(clientName)) {
           out.println(msg);
         }
