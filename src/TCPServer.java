@@ -1,19 +1,21 @@
 import java.io.*;
 import java.net.*;
-import java.security.KeyPair;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public class TCPServer {
   private static final int port = 6789;
-  private static final Map<String, List<String>> msgQ = new ConcurrentHashMap<>();
-  //merge two client lists into one <Name, Set of Topics>?
+  private static final Map<String, LinkedBlockingQueue<String>> msgQ = new ConcurrentHashMap<>();
+  private static final Map<String, List<String>> newClientMsgQ = new ConcurrentHashMap<>();
   private static final Map<String, Map<String, Mediator>> clientsByTopic = new ConcurrentHashMap<>();
 
 
   public static void main(String[] args) {
     clientsByTopic.put("WEATHER", new ConcurrentHashMap<>());
     clientsByTopic.put("NEWS", new ConcurrentHashMap<>());
+    newClientMsgQ.put("WEATHER", new ArrayList<>());
+    newClientMsgQ.put("NEWS", new ArrayList<>());
     try (ServerSocket welcomeSocket = new ServerSocket(port)) {
       while (true) {
         new Mediator(welcomeSocket.accept()).start();
@@ -37,6 +39,7 @@ public class TCPServer {
 
     public Mediator(Socket clientSocket) {
       this.clientSocket = clientSocket;
+      this.isActive = false;
       this.isPublisher = false;
     }
 
@@ -90,26 +93,48 @@ public class TCPServer {
       out.println("<CONN_ACK>");
     }
 
-    private void pub(String topic, String message) {
+    private void pub(String topic, String msg) {
       isPublisher = true;  //Don't love this fix for below problem as publishers will get pushed messages if they don't try to publish right away
+      String message = "Topic: " + topic + ", Message: " + msg;
+      if (newClientMsgQ.containsKey(topic)) {
+        newClientMsgQ.get(topic).add(message);
+      }
       if (clientsByTopic.containsKey(topic) && clientsByTopic.get(topic).containsKey(clientName)) {
         clientsByTopic.get(topic).forEach((k, v) -> {
-          if (v.isActive && !v.isPublisher) { //YOU PRINT TO PUBLISHERS TOO
-            v.out.println(message);
-          } else {
-            msgQ.putIfAbsent(k, new ArrayList<>());
-            msgQ.get(k).add(message);
+          if (!v.isPublisher) {
+            if (!k.equals(v.clientName)) {
+              System.out.println("KEY NAME DOESN'T MATCH MEDIATOR NAME");
+            }
+            msgQ.putIfAbsent(k, new LinkedBlockingQueue<>());
+            if (!(msgQ.get(k).offer(message))) {
+              System.out.println(k + "'s Q is full");
+            }
           }
         });
       } else {
-        out.println("<ERROR: Not Subscribed>");
+        out.println("<ERROR: Publisher Not Subscribed>");
       }
     }
 
     private void sub(String topic) {
       if (clientsByTopic.containsKey(topic)) {
-        clientsByTopic.get(topic).putIfAbsent(clientName, this);
         out.println("<SUB_ACK>");
+        if (!clientsByTopic.get(topic).containsKey(clientName)) {
+          clientsByTopic.get(topic).put(clientName, this);
+          for (String message : newClientMsgQ.get(topic)) {
+            out.println(message);
+          }
+        }
+        //CLIENTS AREN'T GETTING MESSAGES WHILE ALREADY CONNECTED BECAUSE THIS ONLY HAPPENS AT SUB TIME!!
+        if (msgQ.containsKey(clientName)) {
+          while (true) {
+            try {
+              out.println(msgQ.get(clientName).take());
+            } catch (InterruptedException e) {
+              break;
+            }
+          }
+        }
       } else {
         out.println("<ERROR: Subscription Failed - Subject Not Found>");
       }

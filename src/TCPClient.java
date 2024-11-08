@@ -21,7 +21,7 @@ public class TCPClient {
     out.println(message);
   }
 
-  public String readMsg() {
+  public String readMessage() {
     String output = null;
     try {
       output = in.readLine();
@@ -44,7 +44,7 @@ public class TCPClient {
 
   public void disconnect() {
     sendMessage("<DISC>");
-    String response = readMsg();
+    String response = readMessage();
     if (response.startsWith("<D")) {
       try {
         System.out.println(response);

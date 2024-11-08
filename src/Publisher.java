@@ -19,9 +19,9 @@ public class Publisher extends TCPClient {
   public void connect() {
     super.connect();
     sendMessage("<" + name + ", CONN>");
-    System.out.println(readMsg()); //Should be <CONN_ACK>
+    System.out.println(readMessage()); //Should be <CONN_ACK>
     sendMessage("<" + name + ", SUB, " + topic + ">");
-    System.out.println(readMsg()); //should be <SUB_ACK>
+//    System.out.println(readMsg()); //should be <SUB_ACK>
   }
 
 }
