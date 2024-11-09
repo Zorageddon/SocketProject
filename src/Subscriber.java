@@ -1,4 +1,3 @@
-import java.io.IOException;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class Subscriber extends TCPClient {

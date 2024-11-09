@@ -6,7 +6,7 @@ public class Publisher extends TCPClient {
     this.name = name;
     this.topic = topic;
   }
-//THIS BLOCKS WHEN NO ERROR RESPONSE IS PUSHED
+
   public void publish(String topic, String message) {
     sendMessage("<PUB, " + topic + ", " + message + ">");
     String response = readMessage();
@@ -21,7 +21,6 @@ public class Publisher extends TCPClient {
     sendMessage("<" + name + ", CONN>");
     System.out.println(readMessage()); //Should be <CONN_ACK>
     sendMessage("<" + name + ", SUB, " + topic + ">");
-//    System.out.println(readMsg()); //should be <SUB_ACK>
   }
 
 }

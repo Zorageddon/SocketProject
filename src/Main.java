@@ -1,9 +1,8 @@
-public class Main { //for some reason when run, sub1 only prints one of the Qd msgs, and then doesn't DISC_ACK but does disconnect
-                    //I think it's because I'm only reading in one line when reconnecting, and that screws with things somehow
-                    //Now for some reason it only works on the second run of main???
+public class Main {
+
   public static void main(String[] args) throws InterruptedException {
     Subscriber.printer();
-    
+
     Publisher pub1 = new Publisher("pub1", "WEATHER");
     Publisher pub2 = new Publisher("pub2", "NEWS");
     pub1.connect();
@@ -14,12 +13,14 @@ public class Main { //for some reason when run, sub1 only prints one of the Qd m
     pub1.publish("WEATHER", "It is sunny today!");
     pub2.publish("NEWS", "Breaking news!");
     pub1.publish("WEATHER", "It is going to rain tomorrow.");
+    pub1.publish("SPORTS", "Football match update."); //ERROR HANDLING 2 (publishing to non-existent subject)
 
     Thread.sleep(500);
 
     Subscriber sub1 = new Subscriber("sub1");
     sub1.connect();
     sub1.subscribe("WEATHER");
+    sub1.subscribe("SPORTS"); //ERROR HANDLING 1 (subscribing to non-existent subject)
 
     Thread.sleep(500);
 
@@ -44,7 +45,7 @@ public class Main { //for some reason when run, sub1 only prints one of the Qd m
 
     Thread.sleep(500);
 
-    sub1.disconnect(); //hanging after this first <DISC_ACK> might be something to do with threads not shutting down right
+    sub1.disconnect();
     sub2.disconnect();
     sub3.disconnect();
 
@@ -55,6 +56,19 @@ public class Main { //for some reason when run, sub1 only prints one of the Qd m
 
     Thread.sleep(500);
 
+    sub1.reconnect();
+    sub2.reconnect();
+
+    Thread.sleep(500);
+
+    pub1.publish("WEATHER", "Snow tomorrow!");
+
+    sub1.disconnect();
+    sub2.disconnect();
+    pub1.disconnect();
+    pub2.disconnect();
+
     Subscriber.killPrinter();
   }
+
 }

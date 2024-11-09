@@ -100,19 +100,20 @@ public class TCPServer {
     private void pub(String topic, String msg) {
       isPublisher = true;  //Don't love this fix for below problem as publishers will get pushed messages if they don't try to publish right away
       String message = "Topic: " + topic + " -- Message: " + msg;
-      if (clientsByTopic.containsKey(topic) && clientsByTopic.get(topic).containsKey(clientName)) {
-        newClientMsgQ.get(topic).add(message);
-        clientsByTopic.get(topic).forEach((n, m) -> {
-          if (!m.isPublisher) {
-            if (!n.equals(m.clientName)) {
-              System.out.println("KEY NAME DOESN'T MATCH MEDIATOR NAME"); //TAKE THIS OUT EVENTUALLY
+      if (clientsByTopic.containsKey(topic)) {
+        if (clientsByTopic.get(topic).containsKey(clientName)) {
+          newClientMsgQ.get(topic).add(message);
+          clientsByTopic.get(topic).forEach((n, m) -> {
+            if (!m.isPublisher) {
+              msgQ.putIfAbsent(n, new ConcurrentLinkedQueue<>());
+              msgQ.get(n).add(message);
             }
-            msgQ.putIfAbsent(n, new ConcurrentLinkedQueue<>());
-            msgQ.get(n).add(message);
-          }
-        });
+          });
+        } else {
+          out.println("<ERROR: Publisher Not Subscribed>");
+        }
       } else {
-        out.println("<ERROR: Publisher Not Subscribed>");
+        out.println("<ERROR: Subject Not Found>");
       }
     }
 
@@ -125,24 +126,21 @@ public class TCPServer {
             out.println(message);
           }
         }
-        listening = true;
-        new Thread(() -> {
-          while (listening) {
-            if (msgQ.containsKey(clientName)) {
-              while (!msgQ.get(clientName).isEmpty()) {
-                String msg = msgQ.get(clientName).poll();
-                if (msg != null) {
-                  out.println(msg);
+        if (!listening) {
+          listening = true;
+          new Thread(() -> {
+            while (listening) {
+              if (msgQ.containsKey(clientName)) {
+                while (!msgQ.get(clientName).isEmpty()) {
+                  String msg = msgQ.get(clientName).poll();
+                  if (msg != null) {
+                    out.println(msg);
+                  }
                 }
               }
             }
-            try {
-              Thread.sleep(100);
-            } catch (InterruptedException e) {
-              throw new RuntimeException(e);
-            }
-          }
-        }).start();
+          }).start();
+        }
       } else {
         out.println("<ERROR: Subscription Failed - Subject Not Found>");
       }
@@ -156,12 +154,21 @@ public class TCPServer {
           out.println("<RECONNECT_ACK>");
         }
       });
-      if (msgQ.containsKey(this.clientName)) {
-        for (String msg : msgQ.get(clientName)) {
-          out.println(msg);
+      listening = true;
+      new Thread(() -> {
+        while (listening) {
+          if (msgQ.containsKey(clientName)) {
+            while (!msgQ.get(clientName).isEmpty()) {
+              String msg = msgQ.get(clientName).poll();
+              if (msg != null) {
+                out.println(msg);
+              }
+            }
+          }
         }
-        msgQ.get(this.clientName).clear();
-      }
+      }).start();
     }
+
   }
+
 }
