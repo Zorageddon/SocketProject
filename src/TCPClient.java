@@ -2,11 +2,11 @@ import java.io.*;
 import java.net.*;
 
 public class TCPClient {
-  protected Socket clientSocket;
-  protected int port = 6789;
-  protected InetAddress serverAddress;
-  protected PrintWriter out;
-  protected BufferedReader in;
+  private Socket clientSocket;
+  private int port = 6789;
+  private InetAddress serverAddress;
+  private PrintWriter out;
+  private BufferedReader in;
 
 
   public TCPClient() {
@@ -24,7 +24,10 @@ public class TCPClient {
   public String readMessage() {
     String output = null;
     try {
+      clientSocket.setSoTimeout(1000);
       output = in.readLine();
+    } catch (SocketTimeoutException ignored) {
+
     } catch (IOException e) {
       System.out.println("IOException reading message");
     }

@@ -2,11 +2,11 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class TCPServer {
   private static final int port = 6789;
-  private static final Map<String, LinkedBlockingQueue<String>> msgQ = new ConcurrentHashMap<>();
+  private static final Map<String, ConcurrentLinkedQueue<String>> msgQ = new ConcurrentHashMap<>();
   private static final Map<String, List<String>> newClientMsgQ = new ConcurrentHashMap<>();
   private static final Map<String, Map<String, Mediator>> clientsByTopic = new ConcurrentHashMap<>();
 
@@ -35,6 +35,7 @@ public class TCPServer {
     private String clientName;
     private boolean isActive;
     private boolean isPublisher;
+    private boolean listening;
 
 
     public Mediator(Socket clientSocket) {
@@ -65,6 +66,7 @@ public class TCPServer {
                 break;
               case "DISC>":
                 isActive = false;
+                listening = false;
                 out.println("<DISC_ACK>");
                 break;
             }
@@ -79,6 +81,7 @@ public class TCPServer {
                 break;
               default:
                 out.println("<ERROR: Invalid Request>");
+                break;
             }
           }
         }
@@ -90,25 +93,22 @@ public class TCPServer {
     private void connect(String name) {
       isActive = true;
       clientName = name;
+      listening = false;
       out.println("<CONN_ACK>");
     }
 
     private void pub(String topic, String msg) {
       isPublisher = true;  //Don't love this fix for below problem as publishers will get pushed messages if they don't try to publish right away
-      String message = "Topic: " + topic + ", Message: " + msg;
-      if (newClientMsgQ.containsKey(topic)) {
-        newClientMsgQ.get(topic).add(message);
-      }
+      String message = "Topic: " + topic + " -- Message: " + msg;
       if (clientsByTopic.containsKey(topic) && clientsByTopic.get(topic).containsKey(clientName)) {
-        clientsByTopic.get(topic).forEach((k, v) -> {
-          if (!v.isPublisher) {
-            if (!k.equals(v.clientName)) {
-              System.out.println("KEY NAME DOESN'T MATCH MEDIATOR NAME");
+        newClientMsgQ.get(topic).add(message);
+        clientsByTopic.get(topic).forEach((n, m) -> {
+          if (!m.isPublisher) {
+            if (!n.equals(m.clientName)) {
+              System.out.println("KEY NAME DOESN'T MATCH MEDIATOR NAME"); //TAKE THIS OUT EVENTUALLY
             }
-            msgQ.putIfAbsent(k, new LinkedBlockingQueue<>());
-            if (!(msgQ.get(k).offer(message))) {
-              System.out.println(k + "'s Q is full");
-            }
+            msgQ.putIfAbsent(n, new ConcurrentLinkedQueue<>());
+            msgQ.get(n).add(message);
           }
         });
       } else {
@@ -125,16 +125,24 @@ public class TCPServer {
             out.println(message);
           }
         }
-        //CLIENTS AREN'T GETTING MESSAGES WHILE ALREADY CONNECTED BECAUSE THIS ONLY HAPPENS AT SUB TIME!!
-        if (msgQ.containsKey(clientName)) {
-          while (true) {
+        listening = true;
+        new Thread(() -> {
+          while (listening) {
+            if (msgQ.containsKey(clientName)) {
+              while (!msgQ.get(clientName).isEmpty()) {
+                String msg = msgQ.get(clientName).poll();
+                if (msg != null) {
+                  out.println(msg);
+                }
+              }
+            }
             try {
-              out.println(msgQ.get(clientName).take());
+              Thread.sleep(100);
             } catch (InterruptedException e) {
-              break;
+              throw new RuntimeException(e);
             }
           }
-        }
+        }).start();
       } else {
         out.println("<ERROR: Subscription Failed - Subject Not Found>");
       }

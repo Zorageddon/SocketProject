@@ -1,6 +1,6 @@
 public class Publisher extends TCPClient {
-  private String name;
-  private String topic;
+  private final String name;
+  private final String topic;
 
   public Publisher(String name, String topic) {
     this.name = name;
@@ -9,10 +9,10 @@ public class Publisher extends TCPClient {
 //THIS BLOCKS WHEN NO ERROR RESPONSE IS PUSHED
   public void publish(String topic, String message) {
     sendMessage("<PUB, " + topic + ", " + message + ">");
-//    String response = readMsg();  //BLOCKS WHICH IS ANNOYING
-//    if (response.startsWith("<E")) {
-//      System.out.println(response);
-//    }
+    String response = readMessage();
+    if (response != null && response.startsWith("<E")) {
+      System.out.println(response);
+    }
   }
 
   @Override

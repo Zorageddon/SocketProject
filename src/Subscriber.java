@@ -1,13 +1,14 @@
+import java.io.IOException;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class Subscriber extends TCPClient {
-
-  private final String name;
-  private static ConcurrentLinkedQueue<String> msgs = new ConcurrentLinkedQueue<>();
+  //STATIC ELEMENTS
+  private static boolean printerActive = true;
+  private static final ConcurrentLinkedQueue<String> msgs = new ConcurrentLinkedQueue<>();
 
   public static void printer() {
     new Thread(() -> {
-      while (true) {
+      while (printerActive) {
         if (!msgs.isEmpty()) {
           String msg = msgs.poll();
           if (msg != null) {
@@ -15,7 +16,7 @@ public class Subscriber extends TCPClient {
           }
         }
         try {
-          Thread.sleep(100);
+          Thread.sleep(50);
         } catch (InterruptedException e) {
           throw new RuntimeException(e);
         }
@@ -23,8 +24,19 @@ public class Subscriber extends TCPClient {
     }).start();
   }
 
+  public static void killPrinter() {
+    printerActive = false;
+  }
+
+//--------------------------------------------------------------------------------------------------------------------\\
+  //INSTANCE ELEMENTS
+  private final String name;
+  private boolean listening;
+  private Thread msgThread;
+
   public Subscriber(String name) {
     this.name = name;
+    this.listening = false;
   }
 
   public void subscribe(String subject) {
@@ -51,19 +63,30 @@ public class Subscriber extends TCPClient {
   }
 
   public void getMsgs() {
-    new Thread(() -> {
-      while (true) {
-        String msg = readMessage();
-        if (msg != null) {
-          msgs.add(msg);
+    if (!listening) {
+      listening = true;
+      msgThread = new Thread(() -> {
+        while (listening) {
+          String msg = readMessage();
+          if (msg != null) {
+            msgs.add(msg);
+          }
         }
-        try {
-          Thread.sleep(100);
-        } catch (InterruptedException e) {
-          throw new RuntimeException(e);
-        }
-      }
-    }).start();
+      });
+      msgThread.start();
+    }
+  }
+
+  @Override
+  public void disconnect() {
+    listening = false;
+    try {
+      msgThread.interrupt();
+      msgThread.join();
+    } catch (InterruptedException e) {
+      System.out.println(e.getMessage());
+    }
+    super.disconnect();
   }
 
 }
